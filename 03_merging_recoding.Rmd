@@ -1,0 +1,347 @@
+---
+title: "R Notebook"
+out: html_notebook
+---
+
+```{r Load libraries, message=FALSE, warning=FALSE, include=FALSE}
+library(readr)
+library(tidyverse)
+library(skimr)
+library(lubridate)
+library(janitor)
+library(ggrepel)
+library(zoo)
+```
+
+```{r load data, include=FALSE}
+load("~/Desktop/prospectus/data/ripa/person.RData")
+load("~/Desktop/prospectus/data/ripa/incident.RData")
+```
+
+
+```{r}
+ripa = merge(person, incident)
+```
+
+
+#Drop Native American + other
+```{r}
+ripa$race = as.character(ripa$race)
+```
+
+```{r}
+ripa <- filter(ripa, !race == "Native")
+```
+
+
+
+#Creates male/female variables
+```{r}
+ripa$male = 0
+ripa$male[ripa$gender == "1"] <- 1
+ripa$female = 0
+ripa$female[ripa$gender == "0"] <- 1
+```
+
+
+
+```{r}
+ripa$gender[ripa$gender == "0"] <- "Female"
+ripa$gender[ripa$gender == "1"] <- "Male"
+
+ripa$gender = as.factor(ripa$gender)
+```
+
+
+# Changes so3 from 0,1 to Before/After
+```{r}
+ripa$so3[ripa$so3 == 0] <- "Before"
+ripa$so3[ripa$so3 == 1] <- "After"
+```
+
+```{r}
+ripa$so3 = as.factor(ripa$so3)
+```
+
+#Drops variables 
+```{r}
+ripa$action01_order <- NULL
+ripa$action02_contact1 <- NULL
+ripa$action03_test <- NULL
+ripa$action04_curbside <- NULL
+ripa$action05_cuffed <- NULL
+ripa$action06_detention <- NULL
+ripa$action07_canine1 <- NULL
+ripa$action08_firearm1 <- NULL
+ripa$action09_firearm2 <- NULL
+ripa$action11_device <- NULL
+ripa$action12_projectile <- NULL
+ripa$action13_canine2 <- NULL
+ripa$action14_baton <- NULL
+ripa$action15_chemical <- NULL
+ripa$action16_contact1 <- NULL
+ripa$action17_photo <- NULL
+ripa$action18_ask_search_pe <- NULL
+#ripa$action19_search_pe
+#ripa$action20_search_pr
+ripa$action21_seized <- NULL
+ripa$action22_impound <- NULL
+#ripa$action_taken
+ripa$action22_none <- NULL
+
+ripa$a18_consent_granted <- NULL
+ripa$r1_noaction <- NULL
+ripa$r2_warning <- NULL
+ripa$r3_citation <- NULL
+ripa$r4_cite_release <- NULL
+ripa$r5_arrest1 <- NULL
+ripa$r6_arrest2 <- NULL
+ripa$r7_interview <- NULL
+ripa$r8_transport <- NULL
+ripa$r9_guardian <- NULL
+ripa$r10_psych <- NULL
+ripa$r11_refUSDHS <- NULL
+ripa$r12_refschool1 <- NULL
+ripa$r13_refschool2 <- NULL
+ripa$action20_ask_search_pr <- NULL
+ripa$a20_consent_granted <-NULL
+ripa$action19_search_pe <- NULL
+ripa$action20_search_pr <- NULL
+ripa$c1_firearms <- NULL
+ripa$c2_ammunition <- NULL
+ripa$c3_weapons <- NULL
+ripa$c4_drugs <- NULL
+ripa$c5_alcohol <- NULL
+ripa$c6_money <- NULL
+ripa$c7_paraphernalia <- NULL
+ripa$c8_stolen <- NULL
+ripa$c9_devices <- NULL
+ripa$c10_other <- NULL
+ripa$k12 <- NULL
+ripa$school <- NULL
+```
+
+
+#Drops observations with missing data on gender
+
+```{r}
+ripa$gender = as.character(ripa$gender)
+```
+
+```{r}
+ripa <- filter(ripa, !is.na(ripa$gender))
+```
+
+#Drops variable gender
+
+```{r}
+ripa$gender <- NULL
+```
+
+
+
+
+#Creates vector with variables names 
+```{r}
+ripa_vars <- c("person_id", "form_id", "persons", "so3","duration",  
+               "year", "yearmonth", "date",  "stop_time", 
+               "bureau", "n_division", "division", "rd",  "cfs",
+               "officer1", "officer2", "officer_div", "officer_asgmt",
+               "stop_type", "offense_code", "offense_type", 
+               "rfs","trf", "rs", "other_stops", "trf_violation", "brs", "race",
+               "age", "male", "female",  
+               "asian", "black", "hispanic", "white", 
+               "search_person", "search_property", "hit", "contraband_none", 
+               "ros", "ros1_arrest", "ros2_citation", "ros3_interview", "ros4_naw", "ros5_other",
+               "action_taken")       
+```
+
+                        
+ 
+# Subset variables
+```{r}
+ripa <- ripa[, ripa_vars]
+```
+
+
+
+# Creates variable week
+```{r}
+ripa$week = week(ripa$date)
+```
+
+
+
+# Orders levels of variables race
+```{r}
+ripa$race = factor(ripa$race, levels = c("Asian", "Black", "Hispanic", "White"))
+```
+
+
+# Drops observations with reason for stop == "Other"
+```{r}
+ripa$rfs = as.character(ripa$rfs)
+```
+
+```{r}
+ripa <- filter(ripa, !(rfs == "Other"))
+```
+
+
+
+# Explores missing data in variable stop_type (Vehicular, Pedestrian and Cyclist)
+```{r}
+ripa$type = "Reported 6_30_2021"
+ripa$type[ripa$stop_type == "driver"] <- "vehicular"
+ripa$type[ripa$stop_type == "passenger"] <- "vehicular"
+ripa$type[ripa$stop_type == "pedestrian"] <- "pedestrian"
+ripa$type[ripa$stop_type == "bicycle"] <- "cyclist"
+```
+
+
+
+
+# Drops Cyclist and Pedestrian stops
+```{r}
+ripa <- filter(ripa, !type == "cyclist")
+ripa <- filter(ripa, !type == "pedestrian")
+```
+
+
+
+# Changes rfs "Reasonable suspicion" to "Suspicion"
+```{r}
+ripa$rfs[ripa$rfs == "Reasonable suspicion"] <- "Suspicion"
+```
+
+
+
+#Changes levels of variables rfs 
+```{r}
+ripa$rfs = factor(ripa$rfs, levels = c("Traffic", "Suspicion"))
+```
+
+
+
+# Imputes type of stop as vehicular when the variable "traffic violation" is populated. This includes all moving, non moving and equipment violations
+```{r}
+ripa$type[ripa$trf_violation == "moving"] <- "vehicular"
+ripa$type[ripa$trf_violation == "non-moving"] <- "vehicular"
+ripa$type[ripa$trf_violation == "equipment"] <- "vehicular"
+```
+
+
+# Drops observatiopns of unidentified type reported before 6_30_2021
+```{r}
+ripa <- filter(ripa, !type == "Reported 6_30_2021")
+
+ripa
+```
+
+# Orders levels of variable so3
+```{r}
+ripa$so3 = factor(ripa$so3, levels = c("Before", "After"))
+```
+
+
+# Creates dummy variables for each race
+```{r}
+ripa$race = NA
+ripa$race[ripa$asian == 1] <- "Asian"
+ripa$race[ripa$black == 1] <- "Black"
+ripa$race[ripa$hispanic == 1] <- "Hispanic"
+ripa$race[ripa$white == 1] <- "White"
+```
+
+
+
+```{r}
+ripa$age_group = NA
+ripa$age_group[ripa$age < 18] <- "Up to 17"
+ripa$age_group[ripa$age == 18] <- "18 to 25"
+ripa$age_group[ripa$age > 18 & ripa$age < 26 ] <- "18 to 25"
+ripa$age_group[ripa$age > 25 & ripa$age < 31 ] <- "26 to 30"
+ripa$age_group[ripa$age > 30 & ripa$age < 36 ] <- "31 to 35"
+ripa$age_group[ripa$age > 35  & ripa$age < 41] <- "36 to 40"
+ripa$age_group[ripa$age > 40 & ripa$age < 46] <- "41 to 45"
+ripa$age_group[ripa$age > 45 & ripa$age < 51] <- "46 to 50"
+ripa$age_group[ripa$age > 50  & ripa$age < 56 ] <- "51 to 55"
+ripa$age_group[ripa$age > 55 & ripa$age < 61 ] <- "56 to 60"
+ripa$age_group[ripa$age > 60 & ripa$age < 66 ] <- "61 to 65"
+ripa$age_group[ripa$age > 65 & ripa$age < 71] <- "66 to 70"
+ripa$age_group[ripa$age > 70 & ripa$age < 76] <- "71 to 75"
+ripa$age_group[ripa$age > 75  & ripa$age < 81 ] <- "76 to 80"
+ripa$age_group[ripa$age > 80] <- "More than 80"
+
+```
+
+
+
+
+```{r}
+ripa$age_group = factor(ripa$age_group, levels = c("Up to 17", 
+                                                   "18 to 25",
+                                                   "26 to 30",
+                                                   "31 to 35",
+                                                   "36 to 40",
+                                                   "41 to 45",
+                                                   "46 to 50",
+                                                   "51 to 55",
+                                                   "56 to 60",
+                                                   "61 to 65",
+                                                   "66 to 70",
+                                                   "71 to 75",
+                                                   "76 to 80",
+                                                   "More than 80"
+                                                   ))
+```
+
+
+```{r}
+ripa$gender = NA
+
+ripa$gender[ripa$male == 1] <- "Male"
+ripa$gender[ripa$male == 0] <- "Female"
+
+ripa$gender = factor(ripa$gender, levels = c("Male", "Female"))
+```
+
+
+```{r}
+ripa$race = factor(ripa$race, levels = c("Asian", "Black", "Hispanic", "White"))
+```
+
+
+```{r}
+ripa$hit_person = 0
+ripa$hit_person[ripa$search_person == 1 & ripa$hit == 1] <- 1
+
+```
+
+```{r}
+ripa$hit_property = 0
+ripa$hit_property[ripa$search_property == 1 & ripa$hit == 1] <- 1
+```
+
+
+```{r}
+table(ripa$ros, useNA = "ifany")
+```
+
+
+```{r}
+save(ripa, file = "~/Desktop/prospectus/data/ripa/ripa.RData")
+
+write.csv(ripa, file = "~/Desktop/prospectus/data/ripa/ripa.csv")
+```
+
+
+
+```{r}
+table(ripa$rfs, useNA = "ifany")
+```
+
+
+
+
+
