@@ -1,0 +1,172 @@
+---
+title: "R Notebook"
+out: html_notebook
+---
+
+Load libraries
+```{r message=FALSE}
+library(readr)
+library(tidyverse)
+library(skimr)
+library(lubridate)
+library(xtable)
+```
+
+
+## Load data 
+```{r message=FALSE, warning=FALSE}
+incident <- read_csv("~/Desktop/prospectus/data/ripa/raw/LAPD_RIPA_Incident.csv")
+```
+
+
+
+
+
+
+## Change/shorten variable names
+```{r}
+vars_names <- c("form_id", "date", "stop_time", "duration", "rd", # 5
+                "n_division", "division", "bureau", "cfs", "k12", #
+                "school", "persons", "officer1", "officer2", "officer_div", 
+                "officer_asgmt","action_taken") # 10
+              
+               
+
+colnames(incident) <- vars_names
+```
+
+
+
+
+## Set date/time 
+```{r}
+incident[c("month", "day", "year")] <- str_split_fixed(incident$date, "/", 3)
+
+
+#create variable date mdy format
+incident$date = NA
+incident$date = paste(incident$month, incident$day, incident$year)
+incident$date = mdy(incident$date)
+
+
+#remove duplicate time vars
+incident$month <- NULL
+incident$day <- NULL
+incident$year <- NULL 
+```
+
+
+
+
+## Replace NA
+```{r}
+# division
+incident$n_division[incident$n_division == 99] <- NA
+incident$division[incident$division == "OTH"] <- NA
+
+# bureau
+incident$bureau[incident$bureau == "OTH"] <- NA
+
+# calls for service
+incident$cfs[incident$cfs == "No"] <- 0
+incident$cfs[incident$cfs == "Yes"] <- 1
+
+# k12
+incident$k12[incident$k12 == "No"] <- 0
+incident$k12[incident$k12 == "Yes"] <- 1
+#
+incident$action_taken[incident$action_taken == "No"] <- 0
+incident$action_taken[incident$action_taken == "Yes"] <- 1
+```
+
+
+
+
+
+```{r}
+incident$officer_asgmt[incident$officer_asgmt == '"Patrol, traffic enforcement, field operations"'] <- "traffic"
+incident$officer_asgmt[incident$officer_asgmt == "Gang enforcement"] <- "gangs"
+incident$officer_asgmt[incident$officer_asgmt == '"Compliance check (e.g., parole/probation/PRCS/mandatory supervision)"'] <- "compliance" 
+incident$officer_asgmt[incident$officer_asgmt == "Investigative/detective"] <- "investigation"
+incident$officer_asgmt[incident$officer_asgmt == "Narcotics/vice"] <- "narcotics"
+incident$officer_asgmt[incident$officer_asgmt == "Task force"] <- "task_force"
+incident$officer_asgmt[incident$officer_asgmt == "Roadblock or DUI sobriety checkpoint"] <- "sobriety_checkpoint"
+incident$officer_asgmt[incident$of ficer_asgmt == "Special events"]<- "special_events"
+incident$officer_asgmt[incident$officer_asgmt == "Other"] <- "other"
+incident$officer_asgmt[incident$officer_asgmt == '"K-12 Public School, including school resource officer or school police officer"'] <- "other" 
+```
+
+
+
+
+
+
+```{r warning=FALSE}
+fct_vars <- c("form_id", "rd", "n_division", "division", "bureau", 
+         "officer1", "officer2", "officer_asgmt", "officer_div")
+
+incident[fct_vars] <- lapply(incident[fct_vars], as.factor)
+
+```
+
+
+```{r}
+num_vars <- c("duration", "cfs", "persons", "action_taken")
+
+incident[num_vars] <- lapply(incident[num_vars], as.numeric)
+```
+
+
+
+
+```{r}
+save(incident, file = "~/Desktop/prospectus/data/ripa/incident.RData")
+
+write.csv(incident, file = "~/Desktop/prospectus/data/ripa/incident.csv")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

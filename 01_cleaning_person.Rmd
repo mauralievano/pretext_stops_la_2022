@@ -1,0 +1,429 @@
+---
+title: "R Notebook"
+out: html_notebook
+---
+
+Load libraries
+```{r message=FALSE}
+library(lubridate) # dates manipulation
+library(readr) # read different formats like csv
+library(skimr) # summaries
+library(tidyverse) 
+library(xtable) # latex tables
+```
+
+
+## Load data 
+```{r Load data, message=FALSE, warning=FALSE}
+person <- read_csv("~/Desktop/prospectus/data/ripa/raw/LAPD_RIPA_Person.csv")
+```
+
+```{r Load data, message=FALSE, warning=FALSE}
+#person <- read_csv("~/Desktop/prospectus/data/ripa/raw/LAPD_RIPA__AB_953__STOP_Person_Detail_from_7_1_2018_to_Present_20231105.csv")
+```
+
+
+
+
+## Select variables
+```{r}
+person = person[ , c(1:5,
+                     6:7, 9:20, # 10 (8 student)
+                     31:35, # 36:44 RS Basis for stop, 45-46 ed code 
+                     47:70, 72,  #  (71-student, basis for search 73 -86)
+                     87:97,
+                     115, 116, 119, 122, 
+                     125, 126,
+                     129:135)]
+```
+
+
+## Change/shorten variable names
+```{r}
+names <- c("form_id", "person_id", "stop_date_time", "stop_time", "rd", # 5
+           "n_division", "division", "pretext", "stop_type", "age", #10
+           "race_p","asian_x", "black", "hispanic", "south_asian", # 15
+           "native", "pi", "white", "gender", "rfs",  #20
+           "offense_code", "offense_type",  "trf_violation", "brs", "action01_order", #25
+           "action02_contact1", "action03_test", "action04_curbside", "action05_cuffed", "action06_detention", #30
+           "action07_canine1", "action08_firearm1", "action09_firearm2", "action11_device", "action12_projectile", #35
+          "action13_canine2", "action14_baton", "action15_chemical", "action16_contact1", "action17_photo", # 40
+          "action18_ask_search_pe", "a18_consent_granted", "action19_search_pe","action20_ask_search_pr","a20_consent_granted",  #45
+          "action20_search_pr", "action21_seized", "action22_impound",  "action22_none", "contraband_none",  #50
+          "c1_firearms", "c2_ammunition", "c3_weapons", "c4_drugs",  "c5_alcohol",# 55
+          "c6_money", "c7_paraphernalia", "c8_stolen", "c9_devices", "c10_other",#60
+          "r1_noaction", "r2_warning", "r3_citation",   "r4_cite_release", "r5_arrest1",#65
+           "r6_arrest2","r7_interview", "r8_transport", "r9_guardian",   "r10_psych", #70
+           "r11_refUSDHS", "r12_refschool1","r13_refschool2") #
+          
+  
+```
+
+
+
+```{r}
+colnames(person) <- names          
+```
+
+
+
+
+
+## Set date/time 
+```{r}
+# divide date string
+person[c("date", "time", "hour")] <- str_split_fixed(person$stop_date_time, " ", 3)
+person[c("month", "day", "year")] <- str_split_fixed(person$date, "/", 3)
+
+#create variable date mdy format
+person$date = NA
+person$date = paste(person$month, person$day, person$year)
+person$date = mdy(person$date)
+person$month = month(person$date, label = T)
+person$year = year(person$date)
+person <- person %>% mutate(yearmonth = zoo::as.yearmon(date))
+
+### WEEK
+person$week = week(person$date)
+```
+
+
+```{r}
+#remove duplicate time vars
+person$time <- NULL
+person$month <- NULL
+person$hour <- NULL
+person$day <- NULL
+person$stop_date_time <- NULL
+```
+
+## Replace NA
+```{r}
+person$n_division[person$n_division == 99] <- NA
+person$division[person$division == "OTH"] <- NA
+person$pretext[person$pretext == ""] <- NA # Before 6/30/21
+person$stop_type[person$stop_type == ""] <- NA # Before 6/30/21
+```
+
+
+
+# integer to numeric
+```{r}
+person$age = as.numeric(person$age)
+```
+
+
+
+## remove those age > 90
+```{r}
+person <- filter(person, (!age > 90)) # remove individuals age > 90
+```
+
+
+## Recode stop vars
+```{r}
+person$pretext[person$pretext == "Y"] <- 1
+person$pretext[person$pretext == "N"] <- 0
+person$stop_type[person$stop_type == "PED"] <- "pedestrian"
+person$stop_type[person$stop_type == "PAS"] <- "passenger"
+person$stop_type[person$stop_type == "DRV"] <- "driver"
+person$stop_type[person$stop_type == "BIC"] <- "bicycle"
+```
+
+
+
+## Recode race
+```{r warning=FALSE}
+race_vars <- colnames(person[, c(11, 12, 13, 14, 15, 16, 17)])
+person <- person %>% 
+     mutate_at(race_vars, funs(recode(., "Yes" = 1, "No" = 0)))
+```
+
+```{r}
+person$asian = 0
+person$asian[person$asian_x == 1] <- 1
+person$asian[person$south_asian == 1] <- 1
+person$asian[person$pi == 1] <- 1
+```
+
+
+```{r}
+person$race = NA
+```
+
+
+```{r}
+# create race as categorical variable
+person$race = NA
+person$race[person$asian == 1] <- "Asian"
+person$race[person$black == 1] <- "Black"
+person$race[person$hispanic == 1] <- "Hispanic"
+person$race[person$white == 1] <- "White"
+person$race[person$native == 1] <- "Native"
+
+```
+
+# Recoding variable reason for stop
+
+```{r}
+person$rfs[person$rfs == "Traffic violation"] <- "Traffic"
+person$rfs[person$rfs == "Reasonable suspicion that person was engaged in criminal activity"] <- "Reasonable suspicion"
+
+# Other
+person$rfs[person$rfs == '"Known to be on parole/probation,PRCS, mandatory supervision"'] <- "Other"
+person$rfs[person$rfs == "Consensual encounter resulting in search"] <- "Other"
+person$rfs[person$rfs == "Investigation to determine if person is truant" ] <- "Other"
+person$rfs[person$rfs == "Knowledge of outstanding arrest warrant/wanted person"] <- "Other"
+person$rfs[person$rfs == "Possible conduct warranting disciple under Education Code"] <- "Other"
+person$rfs[person$rfs == "Possible Danger to Self & Others/5150"] <- "Other"
+
+```
+
+
+```{r}
+person <- person %>% mutate(trf = if_else(rfs == "Traffic" , 1 , 0),
+                            rs= if_else(rfs == "Reasonable suspicion" , 1 , 0),
+                            other_stops = if_else(rfs == "Other" , 1 , 0))
+```
+
+
+
+
+
+
+
+
+
+#Recode trf violation
+```{r}
+person$trf_violation[person$trf_violation == ""] <- NA
+person$trf_violation[person$trf_violation == "Moving violation"] <- "moving"
+#person$trf_violation[person$trf_violation == "Non-moving violation, including registration"] <- "non-moving"
+person$trf_violation[person$trf_violation == "\"Non-moving violation, including registration\""] <- "non-moving"
+person$trf_violation[person$trf_violation == "Equipment violation"] <- "equipment"
+```
+
+
+
+
+```{r}
+#rd_9999 <- filter(person, rd == "9999")
+```
+
+
+
+#remove those with no division/rd
+```{r}
+person <- filter(person, !is.na(division))
+```
+
+
+
+## integer to factor
+```{r}
+fct <- c("form_id", "person_id",  "n_division", "division", "rd", "year", "rfs", "race", "trf_violation")
+person[fct] <- lapply(person[fct], as.factor)
+```
+
+
+```{r}
+person$action06_detention = as.character(person$action06_detention)
+```
+
+
+```{r}
+person$action06_detention[person$action06_detention == "TRUE"]  <- 1
+person$action06_detention[person$action06_detention == "FALSE"] <- 0
+```
+
+```{r}
+person$action06_detention = as.numeric(person$action06_detention)
+```
+
+
+
+
+```{r warning=F}
+vars_yes_no <- colnames(person[ , c(24:28, 30:59)])
+
+
+person <- person %>% 
+     mutate_at(vars_yes_no, funs(recode(., "Yes" = 1, "No" = 0)))
+
+```
+
+
+
+```{r}
+person$brs = person$brs
+person$brs[person$brs == ""] <- NA
+person$brs[person$brs == "Officer witnessed commission of a crime"] <- "witness"
+person$brs[person$brs == "Matched suspect description"] <- "suspect"
+person$brs[person$brs == "Actions indicative of engaging in a violent crime"] <- "violent"
+person$brs[person$brs == "Witness or victim identification of suspect at the scene"] <- "identification"
+person$brs[person$brs == "Actions indicative of casing a victim or location"] <- "casing"
+person$brs[person$brs == "Suspected of acting as a lookout"] <- "lookout"
+person$brs[person$brs == "Carrying suspicious object"] <- "object"
+person$brs[person$brs == "Actions indicative of a drug transaction"] <- "drugs"
+person$brs[person$brs == "Other reasonable suspicion of a crime"] <- "other"
+```
+
+
+```{r}
+person$search_person = person$action19_search_pe
+person$search_property = person$action20_search_pr
+#person$search_any = (person$search_person) + (person$search_property)
+```
+
+
+
+```{r}
+person$contraband = person$contraband_none
+person$contraband[person$contraband == 1] <- 5
+person$contraband[person$contraband == 0] <- 1
+person$contraband[person$contraband == 5] <- 0
+
+```
+
+
+```{r}
+person$hit = person$contraband
+```
+
+
+
+
+```{r warning=FALSE}
+ros_vars <- colnames(person[ , 60:72])
+person <- person %>% 
+     mutate_at(ros_vars, funs(recode(., "Yes" = 1, "No" = 0)))
+```
+
+
+
+
+## Recode result of stop
+
+```{r}
+### Result 1: Arrest
+person$ros1_arrest = 0
+person$ros1_arrest[person$r5_arrest1 == 1] <- 1
+person$ros1_arrest[person$r6_arrest2 == 1] <- 1
+
+
+### Result 2: Citation
+person$ros2_citation = 0
+person$ros2_citation[person$r3_citation == 1] <- 1
+person$ros2_citation[person$r4_cite_release == 1] <- 1
+
+
+### Result 3: Interview
+person$ros3_interview = 0
+person$ros3_interview[person$r7_interview == 1] <- 1
+
+
+
+### Result 4: No action or warning
+person$ros4_naw = 0
+person$ros4_naw[person$r1_noaction == 1] <- 1
+person$ros4_naw[person$r2_warning == 1] <- 1
+
+
+### Result 4: Other
+person$ros5_other = 0
+person$ros5_other[person$r8_transport == 1 ] <- 1
+person$ros5_other[person$r9_guardian == 1] <- 1
+person$ros5_other[person$r10_psych == 1] <- 1
+person$ros5_other[person$r11_refUSDHS == 1] <- 1
+person$ros5_other[person$r12_refschool1 == 1] <- 1
+person$ros5_other[person$r13_refschool2 == 1] <- 1
+```
+
+
+
+
+```{r}
+person <- person %>% 
+  mutate(ros =case_when(ros1_arrest == 1 ~ "Arrest",
+                        ros2_citation == 1 ~ "Citation",
+                        ros3_interview == 1 ~ "Interview",
+                        ros4_naw == 1 ~ "No action/Warning",
+                        ros5_other == 1~ "Other" ))
+```
+
+
+```{r}
+person$gender_all = person$gender
+```
+
+
+
+
+
+```{r}
+person$gender[person$gender == "Nonconforming"] <- "Other_gender"
+person$gender[person$gender == "Transgender man/boy"] <- "Other_gender"
+person$gender[person$gender == "Transgender woman/girl"] <- "Other_gender"
+
+```
+
+
+```{r}
+person$gender_other = person$gender
+```
+```{r}
+person$gender_other[person$gender_other == "Female"] <- 0
+person$gender_other[person$gender_other == "Male"] <- 0
+person$gender_other[person$gender_other == "Other_gender"] <- 1
+```
+
+
+
+```{r}
+person$gender[person$gender == "Other_gender"] <- NA
+```
+
+
+
+
+```{r}
+person$gender[person$gender == "Female"] <- 0
+person$gender[person$gender == "Male"] <- 1
+```
+
+
+
+
+```{r}
+
+person <- person %>% mutate(so3 = if_else(yearmonth < "Mar 2022", 0, 1))
+```
+
+
+
+```{r}
+person$ros = as.factor(person$ros)
+```
+
+```{r}
+person$asian_x <- NULL
+person$race_p <- NULL
+person$gender_other <- NULL
+person$native <- NULL
+person$pretext <- NULL
+person$south_asian <- NULL
+person$pi <- NULL
+person$gender_all <- NULL
+```
+
+
+
+
+```{r}
+save(person, file = "~/Desktop/prospectus/data/ripa/person.RData")
+
+write.csv(person, file = "~/Desktop/prospectus/data/ripa/person.csv")
+```
+
+
+
