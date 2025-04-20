@@ -1,40 +1,39 @@
 \begin{table}[!h]
-\centering\centering\begingroup\fontsize{9}{11}\selectfont
+\centering\begingroup\fontsize{9}{11}\selectfont
 
-\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
-\begin{tabular}{l>{\raggedright\arraybackslash}p{6cm}l>{\raggedright\arraybackslash}p{6cm}}
+\begin{tabular}{lll>{\raggedright\arraybackslash}p{4cm}}
 \toprule
 Variable & Description & Type & Values\\
 \midrule
-\cellcolor{gray!10}{policy} & \cellcolor{gray!10}{Policy period (0 = before, 1 = after)} & \cellcolor{gray!10}{binary} & \cellcolor{gray!10}{0–1}\\
+policy & Policy period (0 = before, 1 = after) & binary & 0–1\\
 rfs & Reason for stop & categorical & traffic, suspicion\\
-\cellcolor{gray!10}{traffic} & \cellcolor{gray!10}{Traffic-related stop} & \cellcolor{gray!10}{binary} & \cellcolor{gray!10}{0–1}\\
+traffic & Traffic-related stop & binary & 0–1\\
 suspicion & Suspicion-related stop & binary & 0–1\\
-\cellcolor{gray!10}{bureau} & \cellcolor{gray!10}{Geographic bureau (4 categories)} & \cellcolor{gray!10}{categorical} & \cellcolor{gray!10}{South, Valley, Central, West}\\
+bureau & Geographic bureau (4 categories) & categorical & South, Valley, Central, West\\
 \addlinespace
 division & Police division (21 divisions) & categorical & Southwest, Van Nuys, Hollenbeck, Mission, Central\\
-\cellcolor{gray!10}{rd} & \cellcolor{gray!10}{Reporting district} & \cellcolor{gray!10}{categorical} & \cellcolor{gray!10}{101–2199}\\
+rd & Reporting district & categorical & 101–2199\\
 age & Age of individual stopped & continuous & 12–81\\
-\cellcolor{gray!10}{male} & \cellcolor{gray!10}{Gender indicator (1 = male, 0 = not)} & \cellcolor{gray!10}{binary} & \cellcolor{gray!10}{0–1}\\
+male & Gender indicator (1 = male, 0 = not) & binary & 0–1\\
 female & NA & binary & 0–1\\
 \addlinespace
-\cellcolor{gray!10}{asian} & \cellcolor{gray!10}{Race: Asian (binary)} & \cellcolor{gray!10}{binary} & \cellcolor{gray!10}{0–1}\\
+asian & Race: Asian (binary) & binary & 0–1\\
 black & Race: Black (binary) & binary & 0–1\\
-\cellcolor{gray!10}{hispanic} & \cellcolor{gray!10}{Race: Hispanic (binary)} & \cellcolor{gray!10}{binary} & \cellcolor{gray!10}{0–1}\\
+hispanic & Race: Hispanic (binary) & binary & 0–1\\
 white & Race: White (binary) & binary & 0–1\\
-\cellcolor{gray!10}{other\_race} & \cellcolor{gray!10}{Race: Other (binary)} & \cellcolor{gray!10}{binary} & \cellcolor{gray!10}{0–1}\\
+other\_race & Race: Other (binary) & binary & 0–1\\
 \addlinespace
 search\_person & Was the person searched? & binary & 0–1\\
-\cellcolor{gray!10}{consent\_person} & \cellcolor{gray!10}{Consent given for person search} & \cellcolor{gray!10}{binary} & \cellcolor{gray!10}{0–1}\\
+consent\_person & Consent given for person search & binary & 0–1\\
 hit\_person & Evidence found on person & binary & 0–1\\
-\cellcolor{gray!10}{search\_property} & \cellcolor{gray!10}{Was property searched?} & \cellcolor{gray!10}{binary} & \cellcolor{gray!10}{0–1}\\
+search\_property & Was property searched? & binary & 0–1\\
 consent\_property & Consent given for property search & binary & 0–1\\
 \addlinespace
-\cellcolor{gray!10}{hit\_property} & \cellcolor{gray!10}{Evidence found in property} & \cellcolor{gray!10}{binary} & \cellcolor{gray!10}{0–1}\\
+hit\_property & Evidence found in property & binary & 0–1\\
 r1\_arrest & Stop resulted in arrest & binary & 0–1\\
-\cellcolor{gray!10}{r2\_citation} & \cellcolor{gray!10}{Stop resulted in citation} & \cellcolor{gray!10}{binary} & \cellcolor{gray!10}{0–1}\\
+r2\_citation & Stop resulted in citation & binary & 0–1\\
 r3\_nle & Stop resulted in no legal enforcement & binary & 0–1\\
 \bottomrule
-\end{tabular}}
+\end{tabular}
 \endgroup{}
 \end{table}
